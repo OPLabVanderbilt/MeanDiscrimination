@@ -1,0 +1,319 @@
+// version: Oct 20th (4th task of session 2) use with version 8.0 of jsPysch
+let chainLink = '' // link to another task or website
+// attention check?
+
+/* initialize JsPsych */
+var jsPsych = initJsPsych({
+    on_finish: function(){
+        if (!chainLink == '') {
+            window.location = chainLink + "&id=" + sbjID + "&src=" + source + '&study=' + study
+        }
+    }
+});
+
+/* define a study */
+let study = jsPsych.data.getURLVariable('study')
+if (study === undefined) {
+    study = 'unknown'
+}
+
+/*make id*/
+let sbjID = jsPsych.data.getURLVariable('id')
+if (sbjID === undefined) {
+    sbjID = jsPsych.randomization.randomID(10)
+}
+
+// Get source of participant
+let source = jsPsych.data.getURLVariable('src')
+if (source === undefined) {
+    source = 'unknown'
+}
+
+/* get time since start */ 
+let origTime = Number(jsPsych.data.getURLVariable('time'))
+if (isNaN(origTime)) {
+    origTime = 0
+}
+let expTime = origTime
+
+jsPsych.data.addProperties({
+    sbjID: sbjID,
+    Study: study,
+    Source: source,
+    OrigTime: origTime,
+    StartTime: Date.now()
+})
+        
+/* create timeline */
+var timeline = [];
+
+/* experimental set-up */ 
+// Browser check
+timeline.push({
+    type: jsPsychBrowserCheck,
+    inclusion_function: (data) => {
+        return !data.mobile
+        //return data.browser !== 'safari' && data.mobile === false
+    },
+    exclusion_message: (data) => {
+        return `
+            <p>You must use a desktop/laptop computer to participate in this 
+            experiment.</p>
+            <p>Please restart the experiment on a desktop/laptop computer.</p>
+        `;
+        //<p>Also, if you use Safari browser, please restart the experiment on a different browser (e.g., Chrome, Edge).</p>
+    },
+})
+
+// Enter fullscreen
+timeline.push({
+    type: jsPsychFullscreen,
+    fullscreen_mode: true
+})
+
+// preload images
+var preload = {
+    type: jsPsychPreload,
+    auto_preload: true
+    //images: []
+}
+timeline.push(preload);
+
+/* define welcome message trial */
+var welcome = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+              <p>Please carefully read the instruction. Although you will see the similar images that you saw for another task,</p>
+              <p> what you will do is different</p>
+              `,
+    choices: ['click for instruction']
+}
+timeline.push(welcome);
+
+/* define instructions */
+var instructions = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+    <p> In this task, you will see an array of multiple circles. </p>
+    <p> Your task is to determine if the average size of the circles is </p>
+    <p><strong>larger (F key) or smaller (J key)</strong> than a reference circle, REGARDLESS of COLOR. </p>
+    <p> Here is an example.</p>
+    `, 
+    choices: ['click here for an example']
+}
+timeline.push(instructions)
+
+// instruction: examples
+const eg_fixation = {
+    type: jsPsychImageButtonResponse,
+    stimulus: 'stim/fixation.png',
+    choices: ['click to proceed'],
+    prompt: '<p style ="text-align:center;color:black;"> First you will see a fixation. Please stare at the center of the screen during the experiment </p>'
+}
+timeline.push(eg_fixation)
+
+const eg_stim = {
+    type: jsPsychImageButtonResponse,
+    stimulus: 'stim/eg_stim.png',
+    choices: ['click to proceed'],
+    prompt: '<p style ="text-align:center;color:black;"> The array will be shown very briefly in real trials. </p>'
+}
+timeline.push(eg_stim)
+
+const eg_blank = {
+    type: jsPsychImageButtonResponse,
+    stimulus: 'stim/blank.png',
+    choices: ['click to proceed'],
+    prompt: '<p style ="text-align:center;color:black;"> In real trials, this will be followed by a brief blank period. </p>'
+}
+timeline.push(eg_blank)
+
+const eg_probe = {
+    type: jsPsychImageButtonResponse,
+    stimulus: 'stim/eg_probe.png',
+    choices: ['click to proceed'],
+    prompt: '<p style ="text-align:center;color:black;"> Press the f key if the average size is larger than this reference.</p><p> Press the j key if the average size is smaller than this. </p>'
+}
+timeline.push(eg_probe)
+
+/* define parameters */ //can be changed 
+const time_fixation = 500
+const time_stim = 500
+const time_blank = 200
+const time_int = 300
+const time_feedback = 500 // only for practice trials
+const fixation = {
+    type: jsPsychImageKeyboardResponse,
+    stimulus: 'stim/fixation.png',
+    choices: "NO_KEYS",
+    trial_duration: time_fixation,
+    prompt: '<p style = "text-align:center;color:white;"> Was the average <strong>larger than this circle</strong> (F) or <strong>smaller than this circle</strong> (J)? </p>',
+    data: {
+        task: 'fixation'
+    }
+}
+const blank = {
+    type: jsPsychImageKeyboardResponse,
+    stimulus: 'stim/blank.png',
+    choices: "NO_KEYS",
+    trial_duration: time_blank,
+    prompt: '<p style = "text-align:center;color:white;"> Was the average <strong>larger than this circle</strong> (F) or <strong>smaller than this circle</strong> (J)? </p>',
+    data: {
+        task: 'blank'
+    }
+}
+
+// const time_probe = 1000 or until response?
+
+/* practice trial */
+var prac_instruction = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: 'First, you will complete a few practice trials. Please press the space bar',
+    choices: [' '],
+    post_trial_gap: 3000
+}
+timeline.push(prac_instruction) 
+
+for (let trial of prac_trials) {
+    // present a fixation
+    timeline.push(fixation)
+
+    // present stimulus array
+    var prac_stim = {
+        type: jsPsychImageKeyboardResponse,
+        stimulus: 'stim/' + trial.stim_img,
+        choices: "NO_KEYS", 
+        trial_duration: time_stim,
+        prompt: '<p style = "text-align:center;color:white;"> Was the average <strong>larger than this circle</strong> (F) or <strong>smaller than this circle</strong> (J)? </p>',
+        data: {
+            task: 'stim'
+        }
+    }
+    timeline.push(prac_stim)
+
+    // present a blank
+    timeline.push(blank)
+
+    // present a test probe
+    var prac_probe = {
+        type: jsPsychImageKeyboardResponse,
+        stimulus: 'stim/' + trial.probe_img,
+        choices: ['f', 'j'],
+        prompt: '<p style ="text-align:center;color:black;"> Was the average <strong>larger than this circle</strong> (F) or <strong>smaller than this circle</strong> (J)? </p>',
+        data: {
+            num_trial: trial.num_trial, 
+            mean_level: trial.mean_level, 
+            sd_level: trial.sd_level,
+            probe_var: trial.probe_variability,
+            correct_answer: trial.correct_answer
+        }, //TestTrial: true, 
+        on_finish: function(data) {
+            data.correct = jsPsych.pluginAPI.compareKeys(data.response, data.correct_answer)
+            console.log(data)
+        },
+        post_trial_gap: time_int
+    }
+    timeline.push(prac_probe)
+
+    // present a feedback
+    var feedback = {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: function() {
+            if (jsPsych.data.get().last(1).values()[0].correct) {
+                return "<h3>Correct!</h3>"
+            } else {
+                return "<h3>Incorrect</h3>"
+                }
+            },
+        choices: "NO_KEYS",
+        trial_duration: time_feedback,
+        post_trial_gap: time_blank
+    }
+    timeline.push(feedback)            
+}
+
+var exp_start = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: 'Now, the main experiment will begin. No feedback will be provided. Please press the space bar when you are ready',
+    choices: [' '],
+    post_trial_gap: 3000
+}
+timeline.push(exp_start)
+
+/* main trial */
+for (let trial of trials) {
+    // attention check
+    if (trial.num_trial == 35) {
+        var attention_check = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: 'Press f key to continue',
+            choices: ['f', 'j'],
+            data: { attentionTrial: true },
+            on_finish: function(data) {
+                data.correct = jsPsych.pluginAPI.compareKeys(data.response, 'f')
+                console.log(data)
+            },
+            post_trial_gap: time_int
+        }
+        timeline.push(attention_check)
+    }
+    // present a fixation
+    timeline.push(fixation)
+
+    // present stimulus array
+    var stim_type = {
+        type: jsPsychImageKeyboardResponse,
+        stimulus: 'stim/' + trial.stim_img, 
+        choices: "NO_KEYS", 
+        trial_duration: time_stim,
+        prompt: '<p style = "text-align:center;color:white;"> Was the average <strong>larger than this circle</strong> (F) or <strong>smaller than this circle</strong> (J)? </p>',
+        data: {
+            task: 'stim'
+        }
+        //post_trial_gap: time_int
+    }
+    timeline.push(stim_type)
+
+    // present a blank
+    timeline.push(blank)
+
+    // present a test probe
+    var probe_type = {
+        type: jsPsychImageKeyboardResponse,
+        stimulus: 'stim/' + trial.probe_img, 
+        choices: ['f', 'j'],
+        prompt: '<p style ="text-align:center;color:black;"> Was the average <strong>larger than this circle</strong> (F) or <strong>smaller than this circle</strong> (J)? </p>',
+        data: {
+            TestTrial: true, 
+            num_trial: trial.num_trial, 
+            mean_level: trial.mean_level, 
+            sd_level: trial.sd_level,
+            probe_var: trial.probe_variability,
+            correct_answer: trial.correct_answer
+        },
+        on_finish: function(data) {
+            data.correct = jsPsych.pluginAPI.compareKeys(data.response, data.correct_answer)
+            console.log(data)
+        },
+        post_trial_gap: time_int
+    }
+    timeline.push(probe_type)
+} 
+
+/* Exit fullscreen */
+timeline.push({
+    type: jsPsychFullscreen,
+    fullscreen_mode: false
+})
+
+/* Instruction for completion */
+var end_instructions = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `<p>You have completed all tasks in this experiment.</p>
+              <p>Thank you so much for your participation!</p>`,
+    choices: ['Click here to finish'], //or "continue" depending on the order of the task
+}
+timeline.push(end_instructions)
+
+/* start the experiment */
+jsPsych.run(timeline);

@@ -1,0 +1,324 @@
+// version: Oct 20th (3rd task of session 2) Use with version 8.0 of jsPsych
+let chainLink = '' // 4th task: MD-size
+// attention check -- added
+
+/* initialize JsPsych */
+var jsPsych = initJsPsych({
+    on_finish: function(){
+        if (!chainLink == '') {
+            window.location = chainLink + "?id=" + sbjID + "&src=" + source + '&study=' + study
+        }
+    }
+});
+
+/* define a study */
+let study = jsPsych.data.getURLVariable('study')
+if (study === undefined) {
+    study = 'unknown'
+}
+
+/*make id*/
+let sbjID = jsPsych.data.getURLVariable('id') 
+if (sbjID === undefined) {
+    sbjID = jsPsych.randomization.randomID(10)
+}
+
+// Get source of participant
+let source = jsPsych.data.getURLVariable('src')
+if (source === undefined) {
+    source = 'unknown'
+}
+
+/* get time since start */ 
+let origTime = Number(jsPsych.data.getURLVariable('time'))
+if (isNaN(origTime)) {
+    origTime = 0
+}
+let expTime = origTime
+
+jsPsych.data.addProperties({
+    sbjID: sbjID,
+    Study: study,
+    Source: source,
+    OrigTime: origTime,
+    StartTime: Date.now()
+})
+
+/* create timeline */
+var timeline = [];
+
+/* experimental set-up */ 
+// Browser check
+timeline.push({
+    type: jsPsychBrowserCheck,
+    inclusion_function: (data) => {
+        return !data.mobile
+        //return data.browser !== 'safari' && data.mobile === false
+    },
+    exclusion_message: (data) => {
+        return `
+            <p>You must use a desktop/laptop computer to participate in this 
+            experiment.</p>
+            <p>Please restart the experiment on a desktop/laptop computer.</p>
+        `;
+        //<p>Also, if you use Safari browser, please restart the experiment on a different browser (e.g., Chrome, Edge).</p>
+    },
+})
+
+// Enter fullscreen
+timeline.push({
+    type: jsPsychFullscreen,
+    fullscreen_mode: true
+})
+
+// preload images
+var preload = {
+    type: jsPsychPreload,
+    auto_preload: true
+    //images: []
+}
+timeline.push(preload);
+
+/* define welcome message trial */
+var welcome = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `<p>Please carefully read the instruction. </p>
+              <p>Although the stimuli are similar to what you saw in a previous task, what you will do is different</p>
+              `,
+    choices: ['click for instruction']
+}
+timeline.push(welcome);
+
+/* define instructions */ 
+var instructions = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+    <p> First, you will see <strong>a arrow pointing top or bottom </strong> and an array of lines. </p>
+    <p> Your task is to judge whether the average orientation of the <strong>lines on the cued side</strong> is </p>
+    <p><strong>left-tilted (counterclockwise, press the F key) or right-tilted (clockwise, press the J key)</strong>. </p>
+    <p> Here is an example.</p>
+    `,
+    choices: ['click here for an example']
+}
+timeline.push(instructions)
+
+// instruction: examples
+const eg_cue = {
+    type: jsPsychImageButtonResponse,
+    stimulus: 'stim/cue_top.png',
+    choices: ['click to proceed'],
+    prompt: '<p style ="text-align:center;color:black;"> First you will see an arrow (either pointing top or bottom). Please stare at the center of the screen during the experiment </p>'
+}
+timeline.push(eg_cue)
+
+const eg_stim = {
+    type: jsPsychImageButtonResponse,
+    stimulus: 'stim/eg_stim.png',
+    choices: ['click to proceed'],
+    prompt: '<p style ="text-align:center;color:black;"> Because the cue was <strong> an arrow pointing top </strong>, in this trial you need to estimate the average orientation of the lines on top part, <strong> ignoring the bottom area </strong>. The array will be shown very briefly in real trials. </p>'
+}
+timeline.push(eg_stim)
+
+const eg_test = {
+    type: jsPsychImageButtonResponse,
+    stimulus: 'stim/blank.png',
+    choices: ['click to proceed'],
+    prompt: '<p style ="text-align:center;color:black;"> Press the f key if the average orientation is left-tilted (&bsol;). Press the j key if the average orientation is right-tilted(/). </p>'
+}
+timeline.push(eg_test)
+
+/* define parameters */ //can be changed
+const time_cue = 500
+const time_stim = 200 // Kacin et al. (2021)
+const time_blank = 200
+const time_int = 300
+const time_feedback = 500 // only for practice trials
+const blank = {
+    type: jsPsychImageKeyboardResponse,
+    stimulus: 'stim/blank.png',
+    choices: "NO_KEYS",
+    trial_duration: time_blank,
+    prompt: '<p style = "text-align:center;color:white;"> Was the average orientation of the lines on the cued-location <strong> left-tilted (&bsol;, F) </strong> or <strong> right-tilted (/, J) </strong>? </p>', 
+    data: {
+        task: 'blank'
+    }
+}
+
+// const time_probe = 1000 or until response?
+
+/* practice trials */ 
+var prac_instruction = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: 'First, you will complete a few practice trials. Please press the space bar',
+    choices: [' '],
+    post_trial_gap: 3000
+}
+timeline.push(prac_instruction)
+
+for (let trial of prac_trials) {
+    // present a cue
+    var prac_cue = {
+        type: jsPsychImageKeyboardResponse,
+        stimulus: [`stim/cue_${trial.cue_condition}.png`],
+        choices: "NO_KEYS",
+        trial_duration: time_cue,
+        post_trial_gap: time_int,
+        prompt: '<p style = "text-align:center;color:white;"> Was the average orientation of the lines on the cued-location <strong> left-tilted (&bsol;, F) </strong> or <strong> right-tilted (/, J) </strong>? </p>', 
+        data: {
+            task: 'cue'
+        }
+    }
+    timeline.push(prac_cue)
+
+    // present stimulus array
+    var prac_stim = {
+        type: jsPsychImageKeyboardResponse,
+        stimulus: 'stim/' + trial.stim_img,
+        choices: "NO_KEYS",
+        trial_duration: time_stim,
+        prompt: '<p style = "text-align:center;color:white;"> Was the average orientation of the lines on the cued-location <strong> left-tilted (&bsol;, F) </strong> or <strong> right-tilted (/, J) </strong>? </p>', 
+        data: {
+            task: 'stim'
+        }
+    }
+    timeline.push(prac_stim)
+
+    // present a blank
+    timeline.push(blank)
+
+    var prac_probe = {
+        type: jsPsychImageKeyboardResponse,
+        stimulus: 'stim/blank.png',
+        choices: ['f', 'j'],
+        prompt: '<p style = "text-align:center;color:black;"> Was the average orientation of the lines on the cued-location <strong> left-tilted (&bsol;, F) </strong> or <strong> right-tilted (/, J) </strong>? </p>', 
+        data: {
+            num_trial: trial.num_trial,
+            set_size: trial.set_size,
+            cue_condition: trial.cue_condition,
+            target_mean: trial.target_mean_level,
+            sd_level: trial.sd_level,
+            distractor_mean: trial.distract_mean_level,
+            correct_answer: trial.correct_answer
+        },
+        on_finish: function(data) {
+            data.correct = jsPsych.pluginAPI.compareKeys(data.response, data.correct_answer)
+            console.log(data)
+        },
+        post_trial_gap: time_int
+    }
+    timeline.push(prac_probe)
+
+    // present a feedback
+    var feedback = {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: function() {
+            if (jsPsych.data.get().last(1).values()[0].correct) {
+                return "<h3>Correct!</h3>"
+            } else {
+                return "<h3>Incorrect</h3>"
+            }
+        },
+        choices: "NO_KEYS",
+        trial_duration: time_feedback,
+        post_trial_gap: time_blank
+    }
+    timeline.push(feedback)
+}
+
+var exp_start = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: 'Now, the main experiment will begin. No feedback will be provided. Please press space bar when you are ready',
+    choices: [' '],
+    post_trial_gap: 3000
+}
+timeline.push(exp_start)
+
+/* main trials */
+for (let trial of trials) {
+    // attention check
+    if (trial.num_trial == 25) {
+        var attention_check = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: 'Press j key to continue',
+            choices: ['f', 'j'],
+            data: { attentionTrial: true },
+            on_finish: function(data) {
+                data.correct = jsPsych.pluginAPI.compareKeys(data.response, 'j')
+                console.log(data)
+            },
+            post_trial_gap: time_int
+        }
+        timeline.push(attention_check)
+    }
+    
+    // present a cue
+    var stim_cue = {
+        type: jsPsychImageKeyboardResponse,
+        stimulus: [`stim/cue_${trial.cue_condition}.png`],
+        choices: "NO_KEYS",
+        trial_duration: time_cue,
+        post_trial_gap: time_int,
+        prompt: '<p style = "text-align:center;color:white;"> Was the average orientation of the lines on the cued-location <strong> left-tilted (&bsol;, F) </strong> or <strong> right-tilted (/, J) </strong>? </p>', 
+        data: {
+            task: 'cue'
+        }
+    }
+    timeline.push(stim_cue)
+
+    // present stimulus array
+    var stim_type = {
+        type: jsPsychImageKeyboardResponse,
+        stimulus: 'stim/' + trial.stim_img,
+        choices: "NO_KEYS",
+        trial_duration: time_stim,
+        prompt: '<p style = "text-align:center;color:white;"> Was the average orientation of the lines on the cued-location <strong> left-tilted (&bsol;, F) </strong> or <strong> right-tilted (/, J) </strong>? </p>', 
+        data: {
+            task: 'stim'
+        }
+    }
+    timeline.push(stim_type)
+
+    // present a blank
+    timeline.push(blank)
+
+    // present a test probe
+    var test_probe = {
+        type: jsPsychImageKeyboardResponse,
+        stimulus: 'stim/blank.png',
+        choices: ['f', 'j'],
+        prompt: '<p style = "text-align:center;color:black;"> Was the average orientation of the lines on the cued-location <strong> left-tilted (&bsol;, F) </strong> or <strong> right-tilted (/, J) </strong>? </p>', 
+        data: {
+            TestTrial: true, 
+            num_trial: trial.num_trial,
+            set_size: trial.set_size,
+            cue_condition: trial.cue_condition, 
+            target_mean: trial.target_mean_level, 
+            sd_level: trial.sd_level,
+            distractor_mean: trial.distract_mean_level,
+            correct_answer: trial.correct_answer
+        },
+        on_finish: function(data) {
+            data.correct = jsPsych.pluginAPI.compareKeys(data.response, data.correct_answer)
+            console.log(data)
+        },
+        post_trial_gap: time_int
+    }
+    timeline.push(test_probe)
+}
+
+/* Exit fullscreen */
+timeline.push({
+    type: jsPsychFullscreen,
+    fullscreen_mode: false
+})
+
+/* Instruction for completion */
+var end_instructions = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: '<p>You have completed this task! Please continue the following one. </p>',
+    choices: ['Click here to continue'], //or "continue" depending on the order of the task
+}
+timeline.push(end_instructions)
+
+/* start the experiment */
+jsPsych.run(timeline);
